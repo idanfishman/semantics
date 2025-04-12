@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::Parser;
 
 use cli::{Cli, Command, ConfigCommand};
@@ -13,7 +14,7 @@ mod utils;
 #[cfg(test)]
 mod test_helpers;
 
-fn main() {
+fn main() -> Result<()> {
     let args = Cli::parse();
 
     let config_path = args.config;
@@ -23,12 +24,14 @@ fn main() {
             commands::analyze::analyze();
         }
         Command::Config(ConfigCommand::Init { force }) => {
-            commands::config::init(&config_path, force);
+            commands::config::init(&config_path, force)?;
         }
         Command::Config(ConfigCommand::Show) => {
-            commands::config::show(&config_path);
+            commands::config::show(&config_path)?;
         }
     }
+
+    Ok(())
 }
 
 // fn main() -> Result<(), Box<dyn std::error::Error>> {
