@@ -1,15 +1,18 @@
 use anyhow::Result;
 use git2::Commit;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 use crate::utils::VersionBump;
 
 /// Specifies the section of a commit message.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub enum CommitSection {
     /// The commit message title.
+    #[serde(rename = "title")]
     Title,
     /// The commit message body.
+    #[serde(rename = "body")]
     Body,
 }
 
@@ -115,8 +118,56 @@ impl Rule {
     }
 }
 
+impl Serialize for Rule {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        #[derive(Serialize)]
+        struct RuleSerialize<'a> {
+            #[serde(rename = "pattern")]
+            pattern_str: &'a str,
+            version_bump: &'a VersionBump,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            scope: &'a Option<CommitSection>,
+        }
+
+        let rule = RuleSerialize {
+            pattern_str: &self.pattern_str,
+            version_bump: &self.version_bump,
+            scope: &self.scope,
+        };
+
+        rule.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Rule {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct RuleDeserialize {
+            #[serde(rename = "pattern")]
+            pattern_str: String,
+            version_bump: VersionBump,
+            scope: Option<CommitSection>,
+        }
+
+        let rule = RuleDeserialize::deserialize(deserializer).map_err(|_| serde::de::Error::custom(
+            "expected a commit analyzer rule. with 'pattern', 'version_bump' and optionaly 'scope'",
+        ))?;
+
+        Rule::new(rule.version_bump, &rule.pattern_str, rule.scope)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use serde_json;
+
     use crate::commit_analyzer::rule::{CommitSection, Rule};
     use crate::test_helpers::{create_test_commit, create_test_repo};
     use crate::utils::VersionBump;
@@ -134,7 +185,34 @@ mod tests {
         assert!(rule.is_err());
     }
 
-    // Rule evaluation tests
+    #[test]
+    fn test_rule_serialization() {
+        let rule = Rule::new(VersionBump::Patch, r"^fix: .+$", Some(CommitSection::Title)).unwrap();
+        let serialized = serde_json::to_string(&rule).unwrap();
+        let expected = r#"{"pattern":"^fix: .+$","version_bump":"patch","scope":"title"}"#;
+        assert_eq!(serialized, expected);
+    }
+
+    #[test]
+    fn test_rule_deserialization_valid() {
+        let json = r#"{"pattern":"^fix: .+$","version_bump":"patch","scope":"title"}"#;
+        let rule: Rule = serde_json::from_str(json).unwrap();
+        assert_eq!(rule.pattern_str(), "^fix: .+$");
+        assert_eq!(rule.version_bump(), VersionBump::Patch);
+        assert_eq!(rule.scope(), Some(CommitSection::Title));
+    }
+
+    #[test]
+    fn test_rule_deserialization_invalid() {
+        let json = r#"{"pattern":"^fix: .+$","version_bump":"patch","scope":"invalid"}"#;
+        let rule: Result<Rule, _> = serde_json::from_str(json);
+        assert!(rule.is_err());
+        assert_eq!(
+            rule.unwrap_err().to_string(),
+            "expected a commit analyzer rule. with 'pattern', 'version_bump' and optionaly 'scope'"
+        );
+    }
+
     #[test]
     fn test_rule_eval_title_match() {
         let (repo, _temp_dir) = create_test_repo();

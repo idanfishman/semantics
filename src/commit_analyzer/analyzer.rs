@@ -2,49 +2,10 @@ use std::cmp::Reverse;
 
 use anyhow::Result;
 use git2::Commit;
-use once_cell::sync::Lazy;
 
-use crate::commit_analyzer::rule::{CommitSection, Rule};
+use crate::commit_analyzer::preset::{CONVENTIONAL_COMMITS_RULES, Preset};
+use crate::commit_analyzer::rule::Rule;
 use crate::utils::VersionBump;
-
-/// Predefined rules for analyzing commit messages based on the Conventional Commits specification.
-/// See: <https://www.conventionalcommits.org/en/v1.0.0/>
-static CONVENTIONAL_COMMITS_RULES: Lazy<Vec<Rule>> = Lazy::new(|| {
-    vec![
-        Rule::new(
-            VersionBump::Major,
-            r"^BREAKING\sCHANGE:\s.+$",
-            Some(CommitSection::Body),
-        )
-        .unwrap(),
-        Rule::new(
-            VersionBump::Major,
-            r"^\w+!:\s.+$",
-            Some(CommitSection::Title),
-        )
-        .unwrap(),
-        Rule::new(
-            VersionBump::Minor,
-            r"^feat(?:\(([^)]+)\))?:\s.+$",
-            Some(CommitSection::Title),
-        )
-        .unwrap(),
-        Rule::new(
-            VersionBump::Patch,
-            r"^fix(?:\(([^)]+)\))?:\s.+$",
-            Some(CommitSection::Title),
-        )
-        .unwrap(),
-    ]
-});
-
-/// Presets for predefined commit analysis rules.
-#[derive(Debug, Clone)]
-pub enum Preset {
-    /// Follows the Conventional Commits specification.
-    /// See: <https://www.conventionalcommits.org/en/v1.0.0/>
-    ConventionalCommits,
-}
 
 /// Analyzes commit messages to determine the appropriate version bump based on list of rules.
 #[derive(Debug)]

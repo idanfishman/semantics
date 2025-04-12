@@ -4,10 +4,14 @@ use std::fs;
 use std::path::Path;
 use validator::{Validate, ValidationError};
 
+use crate::commit_analyzer::config::CommitAnalyzerConfig;
+
 #[derive(Debug, Validate, Clone, Serialize, Deserialize)]
 pub struct Config {
     #[validate(custom(function = "validate_tag_format"))]
     tag_format: String,
+
+    commit_analyzer: CommitAnalyzerConfig,
 }
 
 impl Config {
@@ -53,7 +57,7 @@ impl Config {
             .with_context(|| format!("failed to read config file from {:?}", path.as_ref()))?;
 
         let config: Config = serde_json::from_str(&content)
-            .with_context(|| "failed to deseriazling config from JSON")?;
+            .with_context(|| "failed to deserialize config from JSON")?;
 
         config.validate()?;
 
@@ -65,6 +69,8 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             tag_format: String::from("v{version}"),
+
+            commit_analyzer: CommitAnalyzerConfig::default(),
         }
     }
 }
