@@ -1,7 +1,8 @@
-use crate::utils::VersionBump;
 use anyhow::Result;
 use git2::Commit;
 use regex::Regex;
+
+use crate::utils::VersionBump;
 
 /// Specifies the section of a commit message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

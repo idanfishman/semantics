@@ -1,10 +1,11 @@
-use anyhow::Result;
 use std::cmp::Reverse;
+
+use anyhow::Result;
+use git2::Commit;
+use once_cell::sync::Lazy;
 
 use crate::commit_analyzer::rule::{CommitSection, Rule};
 use crate::utils::VersionBump;
-use git2::Commit;
-use once_cell::sync::Lazy;
 
 /// Predefined rules for analyzing commit messages based on the Conventional Commits specification.
 /// See: <https://www.conventionalcommits.org/en/v1.0.0/>
@@ -211,7 +212,7 @@ mod test {
     fn test_analyze_commits_with_no_version_bump() {
         let (repo, _temp_dir) = create_test_repo();
         let analyzer = Analyzer::new(Some(Preset::ConventionalCommits), None).unwrap();
-        let commit = create_test_commit(&repo, "master", "chore: a chore commit");
+        let commit = create_test_commit(&repo, "master", "chore: a chore commiwt");
         let commits = vec![commit];
         let result = analyzer.analyze_commits(&commits);
         assert_eq!(result, None);
