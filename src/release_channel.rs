@@ -1,9 +1,14 @@
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+use validator::Validate;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct ReleaseChannel {
+    #[validate(length(min = 1, message = "release channel name cannot be empty"))]
     name: String,
+    #[validate(length(min = 1, message = "release channel must be associated with a branch"))]
     branch: String,
+    #[serde(default)]
     prerelease: bool,
 }
 
@@ -31,19 +36,15 @@ impl ReleaseChannel {
     /// assert_eq!(channel.is_prerelease(), false);
     /// ```
     pub fn new(name: &str, branch: &str, prerelease: bool) -> Result<Self> {
-        if name.is_empty() {
-            anyhow::bail!("release channel name cannot be empty");
-        }
-
-        if branch.is_empty() {
-            anyhow::bail!("release channel must be associated with a branch");
-        }
-
-        Ok(ReleaseChannel {
+        let channel = ReleaseChannel {
             name: name.to_string(),
             branch: branch.to_string(),
             prerelease,
-        })
+        };
+
+        channel.validate()?;
+
+        Ok(channel)
     }
 
     /// Returns a reference to the release channel name.
@@ -62,7 +63,7 @@ impl ReleaseChannel {
     }
 }
 
-/// Finds the index of a release channel in a list of channels based on the branch name.
+/// Finds a release channel in a list of channels based on the branch name.
 ///
 /// # Arguments
 ///
@@ -71,39 +72,39 @@ impl ReleaseChannel {
 ///
 /// # Returns
 ///
-/// Returns a `Result` containing the index of the release channel if found, or an error message.
+/// Returns a `Result` containing a reference to the release channel if found, or an error message.
 ///
 /// # Examples
 ///
 /// ```rust
-/// use crate::release_channel::{ReleaseChannel, find_release_channel};
+/// use crate::release_channel::{ReleaseChannel, find_release_channel_by_branch};
 ///
 /// let channels = vec![
 ///   ReleaseChannel::new("stable", "main", false).unwrap(),
 ///   ReleaseChannel::new("beta", "develop", true).unwrap(),
 /// ];
 ///
-/// let index = find_release_channel("main", &channels);
-/// assert_eq!(index, Ok(0));
+/// let channel = find_release_channel_by_branch("main", &channels).unwrap();
+/// assert_eq!(channel.name(), "stable");
 ///
-/// let index = find_release_channel("develop", &channels);
-/// assert_eq!(index, Ok(1));
+/// let channel = find_release_channel_by_branch("develop", &channels).unwrap();
+/// assert_eq!(channel.name(), "beta");
 /// ```
 ///
 /// # Errors
 ///
 /// Returns an error if no release channel is found for the given branch name.
-pub fn find_release_channel_by_branch(
+pub fn find_release_channel_by_branch<'a>(
     branch_name: &str,
-    channels: &[ReleaseChannel],
-) -> Result<usize> {
+    channels: &'a [ReleaseChannel],
+) -> Result<&'a ReleaseChannel> {
     channels
         .iter()
-        .position(|channel| channel.branch() == branch_name)
-        .with_context(|| format!("no release channel found with branch: {}", branch_name))
+        .find(|channel| channel.branch() == branch_name)
+        .with_context(|| format!("no release channel found for branch: {}", branch_name))
 }
 
-/// Finds the index of a release channel in a list of channels based on the channel name.
+/// Finds a release channel in a list of channels based on the channel name.
 ///
 /// # Arguments
 ///
@@ -112,7 +113,7 @@ pub fn find_release_channel_by_branch(
 ///
 /// # Returns
 ///
-/// Returns a `Result` containing the index of the release channel if found, or an error message.
+/// Returns a `Result` containing a reference to the release channel if found, or an error message.
 ///
 /// # Examples
 ///
@@ -124,23 +125,23 @@ pub fn find_release_channel_by_branch(
 ///   ReleaseChannel::new("beta", "develop", true).unwrap(),
 /// ];
 ///
-/// let index = find_release_channel_by_name("stable", &channels).unwrap();
-/// assert_eq!(index, 0);
+/// let channel = find_release_channel_by_name("stable", &channels).unwrap();
+/// assert_eq!(channel.name(), "stable");
 ///
-/// let index = find_release_channel_by_name("beta", &channels).unwrap();
-/// assert_eq!(index, 1);
+/// let channel = find_release_channel_by_name("beta", &channels).unwrap();
+/// assert_eq!(channel.name(), "beta");
 /// ```
 ///
 /// # Errors
 ///
 /// Returns an error if no release channel is found for the given name.
-pub fn find_release_channel_by_name(
+pub fn find_release_channel_by_name<'a>(
     channel_name: &str,
-    channels: &[ReleaseChannel],
-) -> Result<usize> {
+    channels: &'a [ReleaseChannel],
+) -> Result<&'a ReleaseChannel> {
     channels
         .iter()
-        .position(|channel| channel.name() == channel_name)
+        .find(|channel| channel.name() == channel_name)
         .with_context(|| format!("no release channel found with name: {}", channel_name))
 }
 
@@ -164,7 +165,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
-            "release channel name cannot be empty"
+            "name: release channel name cannot be empty"
         );
     }
 
@@ -174,7 +175,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
-            "release channel must be associated with a branch"
+            "branch: release channel must be associated with a branch"
         );
     }
 
@@ -185,11 +186,15 @@ mod tests {
             ReleaseChannel::new("beta", "develop", true).unwrap(),
         ];
 
-        let index = find_release_channel_by_branch("main", &channels).unwrap();
-        assert_eq!(index, 0);
+        let channel = find_release_channel_by_branch("main", &channels).unwrap();
+        assert_eq!(channel.name(), "stable");
+        assert_eq!(channel.branch(), "main");
+        assert_eq!(channel.prerelease(), false);
 
-        let index = find_release_channel_by_branch("develop", &channels).unwrap();
-        assert_eq!(index, 1);
+        let channel = find_release_channel_by_branch("develop", &channels).unwrap();
+        assert_eq!(channel.name(), "beta");
+        assert_eq!(channel.branch(), "develop");
+        assert_eq!(channel.prerelease(), true);
     }
 
     #[test]
@@ -208,17 +213,34 @@ mod tests {
     }
 
     #[test]
+    fn test_find_release_channel_by_branch_multiple() {
+        let channels = vec![
+            ReleaseChannel::new("stable", "main", false).unwrap(),
+            ReleaseChannel::new("rc", "main", true).unwrap(),
+        ];
+
+        let channel = find_release_channel_by_branch("main", &channels).unwrap();
+        assert_eq!(channel.name(), "stable"); // Verifies the first match
+        assert_eq!(channel.branch(), "main");
+        assert_eq!(channel.prerelease(), false);
+    }
+
+    #[test]
     fn test_find_release_channel_by_name() {
         let channels = vec![
             ReleaseChannel::new("stable", "main", false).unwrap(),
             ReleaseChannel::new("beta", "develop", true).unwrap(),
         ];
 
-        let index = find_release_channel_by_name("stable", &channels).unwrap();
-        assert_eq!(index, 0);
+        let channel = find_release_channel_by_name("stable", &channels).unwrap();
+        assert_eq!(channel.name(), "stable");
+        assert_eq!(channel.branch(), "main");
+        assert_eq!(channel.prerelease(), false);
 
-        let index = find_release_channel_by_name("beta", &channels).unwrap();
-        assert_eq!(index, 1);
+        let channel = find_release_channel_by_name("beta", &channels).unwrap();
+        assert_eq!(channel.name(), "beta");
+        assert_eq!(channel.branch(), "develop");
+        assert_eq!(channel.prerelease(), true);
     }
 
     #[test]
@@ -228,11 +250,24 @@ mod tests {
             ReleaseChannel::new("beta", "develop", true).unwrap(),
         ];
 
-        let index = find_release_channel_by_name("alpha", &channels);
-        assert!(index.is_err());
+        let result = find_release_channel_by_name("alpha", &channels);
+        assert!(result.is_err());
         assert_eq!(
-            index.unwrap_err().to_string(),
+            result.unwrap_err().to_string(),
             "no release channel found with name: alpha"
         );
+    }
+
+    #[test]
+    fn test_find_release_channel_by_name_multiple() {
+        let channels = vec![
+            ReleaseChannel::new("stable", "main", false).unwrap(),
+            ReleaseChannel::new("stable", "develop", true).unwrap(),
+        ];
+
+        let channel = find_release_channel_by_name("stable", &channels).unwrap();
+        assert_eq!(channel.name(), "stable");
+        assert_eq!(channel.branch(), "main"); // Verifies the first match
+        assert_eq!(channel.prerelease(), false);
     }
 }

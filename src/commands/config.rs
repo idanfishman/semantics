@@ -10,6 +10,7 @@ pub fn init(path: &Path, force: bool) -> Result<()> {
             "config file already exists at {:?}. use the '--force' flag to overwrite it.",
             path
         );
+        return Ok(());
     }
 
     let cfg = Config::default();

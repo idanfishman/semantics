@@ -21,7 +21,7 @@ fn main() -> Result<()> {
 
     match args.cmd {
         Command::Analyze => {
-            commands::analyze::analyze();
+            commands::analyze::analyze(&config_path)?;
         }
         Command::Config(ConfigCommand::Init { force }) => {
             commands::config::init(&config_path, force)?;

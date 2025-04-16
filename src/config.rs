@@ -5,18 +5,32 @@ use std::path::Path;
 use validator::{Validate, ValidationError};
 
 use crate::commit_analyzer::config::CommitAnalyzerConfig;
+use crate::release_channel::ReleaseChannel;
 
 #[derive(Debug, Validate, Clone, Serialize, Deserialize)]
 pub struct Config {
+    // Validation is done in the `RuleDeserializer` struct
+    commit_analyzer: CommitAnalyzerConfig,
+
+    #[validate(custom(function = "validate_release_channels"))]
+    #[validate(nested)]
+    release_channels: Vec<ReleaseChannel>,
+
     #[validate(custom(function = "validate_tag_format"))]
     tag_format: String,
-
-    commit_analyzer: CommitAnalyzerConfig,
 }
 
 impl Config {
     pub fn new() -> Self {
         Config::default()
+    }
+
+    pub fn commit_analyzer(&self) -> &CommitAnalyzerConfig {
+        &self.commit_analyzer
+    }
+
+    pub fn release_channels(&self) -> &[ReleaseChannel] {
+        &self.release_channels
     }
 
     pub fn tag_format(&self) -> &str {
@@ -71,16 +85,67 @@ impl Default for Config {
             tag_format: String::from("v{version}"),
 
             commit_analyzer: CommitAnalyzerConfig::default(),
+
+            release_channels: vec![
+                ReleaseChannel::new("stable", "main", false).unwrap(),
+                ReleaseChannel::new("rc", "main", true).unwrap(),
+            ],
         }
     }
 }
 
-/// Validates that a tag format contains the `{version}` placeholder.
+/// Ensure that tag format contains the `{version}` placeholder.
 fn validate_tag_format(tag_format: &str) -> Result<(), ValidationError> {
     if !tag_format.contains("{version}") {
         let mut error = ValidationError::new("tag_format");
         error.message = Some(format!("must contain '{{version}}', got '{}'", tag_format).into());
         return Err(error);
     }
+    Ok(())
+}
+
+/// Ensures that the release channels list adheres to the following rules:
+/// 1. Must contain at least one release channel.
+/// 2. No duplicate release channel names.
+/// 3. At least one release channel must be marked as not a prerelease.
+/// 4. Only one release channel can be marked as not a prerelease.
+fn validate_release_channels(
+    release_channels: &Vec<ReleaseChannel>,
+) -> Result<(), ValidationError> {
+    if release_channels.is_empty() {
+        let mut error = ValidationError::new("release_channels");
+        error.message = Some("must contain at least one release channel".into());
+        return Err(error);
+    }
+
+    let mut names = std::collections::HashSet::new();
+    let mut non_prerelease_count = 0;
+
+    for channel in release_channels {
+        if !names.insert(channel.name().to_string()) {
+            let mut error = ValidationError::new("release_channels");
+            error.message =
+                Some(format!("duplicate release channel name: {}", channel.name()).into());
+            return Err(error);
+        }
+
+        if !channel.prerelease() {
+            non_prerelease_count += 1;
+        }
+    }
+
+    if non_prerelease_count == 0 {
+        let mut error = ValidationError::new("release_channels");
+        error.message =
+            Some("at least one release channel must be marked as not a prerelease.".into());
+        return Err(error);
+    }
+
+    if non_prerelease_count > 1 {
+        let mut error = ValidationError::new("release_channels");
+        error.message = Some("only one release channel can be marked as not a prerelease.".into());
+        return Err(error);
+    }
+
     Ok(())
 }

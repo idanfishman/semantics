@@ -54,7 +54,7 @@ impl Analyzer {
     }
 
     /// Returns a reference to the rules associated with the analyzer.
-    pub fn rules(&self) -> &Vec<Rule> {
+    pub fn rules(&self) -> &[Rule] {
         &self.rules
     }
 
@@ -66,7 +66,7 @@ impl Analyzer {
     ///
     /// # Returns
     ///
-    /// A reference to the static `Vec<Rule>` for the given preset.
+    /// A reference to the static rules for the given preset.
     fn get_preset_rules(preset: Preset) -> &'static Vec<Rule> {
         match preset {
             Preset::ConventionalCommits => &CONVENTIONAL_COMMITS_RULES,

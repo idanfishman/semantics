@@ -59,6 +59,10 @@ impl Rule {
         pattern: &str,
         scope: Option<CommitSection>,
     ) -> Result<Self> {
+        if pattern.is_empty() {
+            return Err(anyhow::anyhow!("pattern must not be empty"));
+        }
+
         let pattern_re = Regex::new(pattern)?;
         Ok(Rule {
             pattern: pattern_re,
@@ -172,11 +176,17 @@ mod tests {
     use crate::test_helpers::{create_test_commit, create_test_repo};
     use crate::utils::VersionBump;
 
-    // Rule creation tests
     #[test]
     fn test_rule_creation_valid() {
         let rule = Rule::new(VersionBump::Patch, r"^fix: .+$", None);
         assert!(rule.is_ok());
+    }
+
+    #[test]
+    fn test_rule_creation_empty_pattern() {
+        let rule = Rule::new(VersionBump::Patch, "", None);
+        assert!(rule.is_err());
+        assert_eq!(rule.unwrap_err().to_string(), "pattern must not be empty");
     }
 
     #[test]
