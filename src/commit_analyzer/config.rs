@@ -6,9 +6,9 @@ use crate::commit_analyzer::rule::Rule;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommitAnalyzerConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
-    preset: Option<Preset>,
+    pub preset: Option<Preset>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    rules: Option<Vec<Rule>>,
+    pub rules: Option<Vec<Rule>>,
 }
 
 impl Default for CommitAnalyzerConfig {

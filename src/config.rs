@@ -1,7 +1,8 @@
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
 use crate::commit_analyzer::config::CommitAnalyzerConfig;
@@ -9,34 +10,17 @@ use crate::release_channel::ReleaseChannel;
 
 #[derive(Debug, Validate, Clone, Serialize, Deserialize)]
 pub struct Config {
-    // Validation is done in the `RuleDeserializer` struct
-    commit_analyzer: CommitAnalyzerConfig,
+    pub commit_analyzer: CommitAnalyzerConfig,
 
     #[validate(custom(function = "validate_release_channels"))]
     #[validate(nested)]
-    release_channels: Vec<ReleaseChannel>,
+    pub release_channels: Vec<ReleaseChannel>,
 
     #[validate(custom(function = "validate_tag_format"))]
-    tag_format: String,
+    pub tag_format: String,
 }
 
 impl Config {
-    pub fn new() -> Self {
-        Config::default()
-    }
-
-    pub fn commit_analyzer(&self) -> &CommitAnalyzerConfig {
-        &self.commit_analyzer
-    }
-
-    pub fn release_channels(&self) -> &[ReleaseChannel] {
-        &self.release_channels
-    }
-
-    pub fn tag_format(&self) -> &str {
-        &self.tag_format
-    }
-
     /// Writes the config to a file.
     ///
     /// # Arguments
@@ -94,11 +78,11 @@ impl Default for Config {
     }
 }
 
-/// Ensure that tag format contains the `{version}` placeholder.
+/// Ensure that tag format ends with the `{version}` placeholder.
 fn validate_tag_format(tag_format: &str) -> Result<(), ValidationError> {
-    if !tag_format.contains("{version}") {
+    if !tag_format.ends_with("{version}") {
         let mut error = ValidationError::new("tag_format");
-        error.message = Some(format!("must contain '{{version}}', got '{}'", tag_format).into());
+        error.message = Some(format!("must end with '{{version}}', got '{}'", tag_format).into());
         return Err(error);
     }
     Ok(())
@@ -122,14 +106,14 @@ fn validate_release_channels(
     let mut non_prerelease_count = 0;
 
     for channel in release_channels {
-        if !names.insert(channel.name().to_string()) {
+        if !names.insert(channel.name.to_string()) {
             let mut error = ValidationError::new("release_channels");
             error.message =
-                Some(format!("duplicate release channel name: {}", channel.name()).into());
+                Some(format!("duplicate release channel name: {}", channel.name).into());
             return Err(error);
         }
 
-        if !channel.prerelease() {
+        if !channel.prerelease {
             non_prerelease_count += 1;
         }
     }
@@ -148,4 +132,63 @@ fn validate_release_channels(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use tempfile::NamedTempFile;
+    use validator::Validate;
+
+    use crate::config::Config;
+    use crate::release_channel::ReleaseChannel;
+
+    #[test]
+    fn test_config_default_is_valid() {
+        let config = Config::default();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_tag_format_validation() {
+        let mut config = Config::default();
+        config.tag_format = "release-{version}".to_string();
+        assert!(config.validate().is_ok());
+        config.tag_format = "release-1.0".to_string();
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_release_channels_validation() {
+        let mut config = Config::default();
+        // Valid default
+        assert!(config.validate().is_ok());
+        // No release channels
+        config.release_channels = vec![];
+        assert!(config.validate().is_err());
+        // Duplicate names
+        config.release_channels = vec![
+            ReleaseChannel::new("stable", "main", false).unwrap(),
+            ReleaseChannel::new("stable", "dev", true).unwrap(),
+        ];
+        assert!(config.validate().is_err());
+        // No stable channel
+        config.release_channels = vec![ReleaseChannel::new("rc", "main", true).unwrap()];
+        assert!(config.validate().is_err());
+        // More than one stable channel
+        config.release_channels = vec![
+            ReleaseChannel::new("stable", "main", false).unwrap(),
+            ReleaseChannel::new("prod", "prod", false).unwrap(),
+        ];
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_save_and_load_config_file() {
+        let config = Config::default();
+        let file = NamedTempFile::new().unwrap();
+        config.save_to_file(file.path()).unwrap();
+        let loaded = Config::from_file(file.path()).unwrap();
+        assert_eq!(loaded.tag_format, config.tag_format);
+        assert_eq!(loaded.release_channels.len(), config.release_channels.len());
+    }
 }

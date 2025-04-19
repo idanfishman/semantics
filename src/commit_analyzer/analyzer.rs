@@ -3,6 +3,7 @@ use std::cmp::Reverse;
 use anyhow::Result;
 use git2::Commit;
 
+use crate::commit_analyzer::config::CommitAnalyzerConfig;
 use crate::commit_analyzer::preset::{CONVENTIONAL_COMMITS_RULES, Preset};
 use crate::commit_analyzer::rule::Rule;
 use crate::utils::VersionBump;
@@ -10,7 +11,7 @@ use crate::utils::VersionBump;
 /// Analyzes commit messages to determine the appropriate version bump based on list of rules.
 #[derive(Debug)]
 pub struct Analyzer {
-    rules: Vec<Rule>,
+    pub rules: Vec<Rule>,
 }
 
 impl Analyzer {
@@ -48,14 +49,17 @@ impl Analyzer {
 
         // Sort rules by version bump in descending order
         // This ensures that more significant version bumps are evaluated first
-        all_rules.sort_by_key(|a| Reverse(a.version_bump()));
+        all_rules.sort_by_key(|a| Reverse(a.version_bump));
 
         Ok(Analyzer { rules: all_rules })
     }
 
-    /// Returns a reference to the rules associated with the analyzer.
-    pub fn rules(&self) -> &[Rule] {
-        &self.rules
+    /// Creates a new `Analyzer` instance from the provided CommitAnalyzerConfig.
+    pub fn from_config(config: &CommitAnalyzerConfig) -> Result<Self> {
+        Self::new(
+            config.preset.as_ref().cloned(),
+            config.rules.as_ref().cloned(),
+        )
     }
 
     /// Returns a reference to the rules associated with the given preset.
@@ -83,7 +87,7 @@ impl Analyzer {
     ///
     /// An `Option<VersionBump>` indicating the version bump type based on the commit message.
     fn analyze_commit(&self, commit: &Commit) -> Option<VersionBump> {
-        self.rules().iter().find_map(|rule| rule.eval(commit))
+        self.rules.iter().find_map(|rule| rule.eval(commit))
     }
 
     /// Analyzes a slice of commits and returns the maximum version bump.
@@ -115,6 +119,7 @@ impl Analyzer {
 #[cfg(test)]
 mod test {
     use crate::commit_analyzer::analyzer::{Analyzer, Preset};
+    use crate::commit_analyzer::config::CommitAnalyzerConfig;
     use crate::commit_analyzer::rule::Rule;
     use crate::test_helpers::{create_test_commit, create_test_repo};
     use crate::utils::VersionBump;
@@ -177,5 +182,51 @@ mod test {
         let commits = vec![commit];
         let result = analyzer.analyze_commits(&commits);
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_analyzer_from_config_with_preset() {
+        let config = CommitAnalyzerConfig {
+            preset: Some(Preset::ConventionalCommits),
+            rules: None,
+        };
+        let analyzer = Analyzer::from_config(&config);
+        assert!(analyzer.is_ok());
+        assert_eq!(analyzer.unwrap().rules.len(), 4); // 4 rules in Conventional Commits
+    }
+
+    #[test]
+    fn test_analyzer_from_config_with_rules() {
+        let rule = Rule::new(VersionBump::Patch, r"^fix: .+$", None).unwrap();
+        let config = CommitAnalyzerConfig {
+            preset: None,
+            rules: Some(vec![rule]),
+        };
+        let analyzer = Analyzer::from_config(&config);
+        assert!(analyzer.is_ok());
+        assert_eq!(analyzer.unwrap().rules.len(), 1); // 1 custom rule
+    }
+
+    #[test]
+    fn test_analyzer_from_config_with_both() {
+        let rule = Rule::new(VersionBump::Patch, r"^fix: .+$", None).unwrap();
+        let config = CommitAnalyzerConfig {
+            preset: Some(Preset::ConventionalCommits),
+            rules: Some(vec![rule]),
+        };
+        let analyzer = Analyzer::from_config(&config);
+        assert!(analyzer.is_ok());
+        assert_eq!(analyzer.unwrap().rules.len(), 5); // 4 from preset + 1 custom rule
+    }
+
+    #[test]
+    fn test_analyzer_from_config_with_none() {
+        let config = CommitAnalyzerConfig {
+            preset: None,
+            rules: None,
+        };
+        let result = Analyzer::from_config(&config);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "no rules provided");
     }
 }

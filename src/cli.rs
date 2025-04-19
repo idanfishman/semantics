@@ -15,7 +15,14 @@ pub struct Cli {
 
 #[derive(Parser, Debug)]
 pub enum Command {
-    Analyze,
+    Analyze {
+        /// Path to the repository
+        #[arg(long, default_value = ".")]
+        repo: PathBuf,
+
+        #[arg(long)]
+        release_channel: Option<String>,
+    },
 
     #[command(subcommand)]
     Config(ConfigCommand),

@@ -20,13 +20,13 @@ pub enum CommitSection {
 #[derive(Debug, Clone)]
 pub struct Rule {
     /// Regex pattern to match against commit messages.
-    pattern: Regex,
+    pub pattern: Regex,
     /// The regex pattern as a string.
-    pattern_str: String,
+    pub pattern_str: String,
     /// The version bump type associated with the rule.
-    version_bump: VersionBump,
+    pub version_bump: VersionBump,
     /// The commit section to which the rule applies. If `None`, the rule applies to the whole message.
-    scope: Option<CommitSection>,
+    pub scope: Option<CommitSection>,
 }
 
 impl Rule {
@@ -72,26 +72,6 @@ impl Rule {
         })
     }
 
-    /// Returns a reference to the regex pattern.
-    pub fn pattern(&self) -> &Regex {
-        &self.pattern
-    }
-
-    /// Returns the regex pattern as a string.
-    pub fn pattern_str(&self) -> &str {
-        &self.pattern_str
-    }
-
-    /// Returns the version bump type.
-    pub fn version_bump(&self) -> VersionBump {
-        self.version_bump
-    }
-
-    /// Returns the scope of the rule.
-    pub fn scope(&self) -> Option<CommitSection> {
-        self.scope
-    }
-
     /// Evaluates the rule against a given commit.
     ///
     /// # Arguments
@@ -102,7 +82,7 @@ impl Rule {
     ///
     /// * `Some(VersionBump)` if the commit message matches the rule's pattern, otherwise `None`.
     pub fn eval(&self, commit: &Commit) -> Option<VersionBump> {
-        let text = match self.scope() {
+        let text = match self.scope {
             Some(scope) => match scope {
                 CommitSection::Title => commit.summary().unwrap_or("").to_string(),
                 CommitSection::Body => commit.body().unwrap_or("").to_string(),
@@ -114,8 +94,8 @@ impl Rule {
             return None;
         }
 
-        if self.pattern().is_match(&text) {
-            Some(self.version_bump())
+        if self.pattern.is_match(&text) {
+            Some(self.version_bump)
         } else {
             None
         }
@@ -207,9 +187,9 @@ mod tests {
     fn test_rule_deserialization_valid() {
         let json = r#"{"pattern":"^fix: .+$","version_bump":"patch","scope":"title"}"#;
         let rule: Rule = serde_json::from_str(json).unwrap();
-        assert_eq!(rule.pattern_str(), "^fix: .+$");
-        assert_eq!(rule.version_bump(), VersionBump::Patch);
-        assert_eq!(rule.scope(), Some(CommitSection::Title));
+        assert_eq!(rule.pattern_str, "^fix: .+$");
+        assert_eq!(rule.version_bump, VersionBump::Patch);
+        assert_eq!(rule.scope, Some(CommitSection::Title));
     }
 
     #[test]

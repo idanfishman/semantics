@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use anyhow::{Ok, Result};
 use serde_json::to_writer_pretty;
-use std::path::Path;
 
 use crate::config::Config;
 

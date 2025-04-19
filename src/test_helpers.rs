@@ -61,3 +61,14 @@ pub fn create_test_tag<'repo>(repo: &'repo Repository, commit: &'repo Commit, ta
     repo.tag_lightweight(tag_name, commit.as_object(), true)
         .unwrap();
 }
+
+#[cfg(test)]
+pub fn create_versioned_test_repo(tags_and_msgs: &[(&str, &str)]) -> (Repository, TempDir) {
+    let (repo, dir) = create_test_repo();
+    let branch = "master";
+    for (tag, msg) in tags_and_msgs {
+        let commit = create_test_commit(&repo, branch, msg);
+        create_test_tag(&repo, &commit, tag);
+    }
+    (repo, dir)
+}
