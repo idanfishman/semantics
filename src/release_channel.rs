@@ -86,7 +86,7 @@ impl ReleaseChannel {
         let base_regex = "(?P<major>0|[1-9]\\d*)\\.(?P<minor>0|[1-9]\\d*)\\.(?P<patch>0|[1-9]\\d*)";
         let prerelease_regex = match self.prerelease {
             true => format!(
-                "(?:-(?P<prerelease>{}(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))",
+                "(?:-(?P<prerelease>{}\\.(?P<preidnum>0|[1-9]\\d*)))",
                 regex::escape(&self.name)
             ),
             false => String::new(),
@@ -302,11 +302,12 @@ mod tests {
     fn test_tag_regex_prerelease_true() {
         let channel = ReleaseChannel::new("alpha", "main", true).unwrap();
         let regex = channel.tag_regex("v").unwrap();
-        // Should match v1.2.3-alpha, v1.2.3-alpha.1, v1.2.3-alpha.1.2
-        assert!(regex.is_match("v1.2.3-alpha"));
+        // Should match v1.2.3-alpha.1, v1.2.3-alpha.123
         assert!(regex.is_match("v1.2.3-alpha.1"));
-        assert!(regex.is_match("v1.2.3-alpha.1.2"));
-        // Should not match v1.2.3-beta.1 or v1.2.3
+        assert!(regex.is_match("v1.2.3-alpha.123"));
+        // Should not match v1.2.3-alpha, v1.2.3-alpha.1.2, v1.2.3-beta.1 or v1.2.3
+        assert!(!regex.is_match("v1.2.3-alpha.1.2"));
+        assert!(!regex.is_match("v1.2.3-alpha"));
         assert!(!regex.is_match("v1.2.3-beta.1"));
         assert!(!regex.is_match("v1.2.3"));
     }

@@ -10,6 +10,7 @@ use crate::release_channel::{
     ReleaseChannel, find_release_channel_by_branch, find_release_channel_by_name,
     find_stable_release_channel,
 };
+use crate::utils::{next_preprelease_version, next_stable_version};
 
 pub fn analyze(
     config_path: &Path,
@@ -35,20 +36,20 @@ pub fn analyze(
         let channel_latest = target_channel.latest_version(&repo, &cfg.tag_format)?;
 
         match (stable_latest, channel_latest) {
-            (Some((stable_tag, stable_ver)), Some((channel_tag, channel_ver))) => {
+            (Some((stable_tag, stable_version)), Some((channel_tag, channel_version))) => {
                 // Both stable and channel versions exist
                 let commits = collect_commits_from_head_to_tag(&repo, &stable_tag)?;
                 let bump = analyzer.analyze_commits(&commits);
                 // TODO: Decide: increment prerelease or start new prerelease series
-                // You have stable_tag, stable_ver, channel_tag, channel_ver, bump
+                // You have stable_tag, stable_version, channel_tag, channel_version, bump
             }
-            (Some((stable_tag, stable_ver)), None) => {
+            (Some((stable_tag, stable_version)), None) => {
                 // Only stable version exists
                 let commits = collect_commits_from_head_to_tag(&repo, &stable_tag)?;
                 let bump = analyzer.analyze_commits(&commits);
                 // TODO: Bump base version according to changes, start prerelease series
             }
-            (None, Some((channel_tag, channel_ver))) => {
+            (None, Some((channel_tag, channel_version))) => {
                 // Only channel version exists (no stable)
                 let commits = collect_commits_from_head_to_tag(&repo, &channel_tag)?;
                 let bump = analyzer.analyze_commits(&commits);
@@ -63,7 +64,7 @@ pub fn analyze(
     } else {
         let stable_latest = target_channel.latest_version(&repo, &cfg.tag_format)?;
         match stable_latest {
-            Some((stable_tag, stable_ver)) => {
+            Some((stable_tag, stable_version)) => {
                 let commits = collect_commits_from_head_to_tag(&repo, &stable_tag)?;
                 let bump = analyzer.analyze_commits(&commits);
                 // TODO: Create a version tag using the tag format
