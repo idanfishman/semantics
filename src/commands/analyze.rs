@@ -10,7 +10,9 @@ use crate::release_channel::{
     ReleaseChannel, find_release_channel_by_branch, find_release_channel_by_name,
     find_stable_release_channel,
 };
-use crate::utils::{next_preprelease_version, next_stable_version};
+use crate::utils::{
+    INITIAL_STABLE_VERSION, bump_version, initial_prerelease_version, next_preprelease_version,
+};
 
 pub fn analyze(
     config_path: &Path,
@@ -40,25 +42,58 @@ pub fn analyze(
                 // Both stable and channel versions exist
                 let commits = collect_commits_from_head_to_tag(&repo, &stable_tag)?;
                 let bump = analyzer.analyze_commits(&commits);
-                // TODO: Decide: increment prerelease or start new prerelease series
-                // You have stable_tag, stable_version, channel_tag, channel_version, bump
+
+                if bump.is_none() {
+                    println!("no changes detected, no version bump needed");
+                    return Ok(());
+                }
+                let bump = bump.unwrap();
+
+                let new_version = next_preprelease_version(
+                    Some(&stable_version),
+                    Some(&channel_version),
+                    bump,
+                    &target_channel.name,
+                );
             }
             (Some((stable_tag, stable_version)), None) => {
                 // Only stable version exists
                 let commits = collect_commits_from_head_to_tag(&repo, &stable_tag)?;
                 let bump = analyzer.analyze_commits(&commits);
-                // TODO: Bump base version according to changes, start prerelease series
+
+                if bump.is_none() {
+                    println!("no changes detected, no version bump needed");
+                    return Ok(());
+                }
+                let bump = bump.unwrap();
+
+                let new_version = next_preprelease_version(
+                    Some(&stable_version),
+                    None,
+                    bump,
+                    &target_channel.name,
+                );
             }
             (None, Some((channel_tag, channel_version))) => {
                 // Only channel version exists (no stable)
                 let commits = collect_commits_from_head_to_tag(&repo, &channel_tag)?;
                 let bump = analyzer.analyze_commits(&commits);
-                // TODO: If a bigger bump is needed, start new prerelease series
+
+                if bump.is_none() {
+                    println!("no changes detected, no version bump needed");
+                    return Ok(());
+                }
+                let bump = bump.unwrap();
+
+                let new_version = next_preprelease_version(
+                    None,
+                    Some(&channel_version),
+                    bump,
+                    &target_channel.name,
+                );
             }
             (None, None) => {
-                // Neither stable nor channel version exists
-                // No commits to collect, just start at 1.0.0
-                // TODO: Set version to 1.0.0 and create a version tag using the tag format and release channel name
+                let new_version = initial_prerelease_version(&target_channel.name);
             }
         }
     } else {
@@ -67,11 +102,17 @@ pub fn analyze(
             Some((stable_tag, stable_version)) => {
                 let commits = collect_commits_from_head_to_tag(&repo, &stable_tag)?;
                 let bump = analyzer.analyze_commits(&commits);
-                // TODO: Create a version tag using the tag format
+
+                if bump.is_none() {
+                    println!("no changes detected, no version bump needed");
+                    return Ok(());
+                }
+                let bump = bump.unwrap();
+
+                let new_version = bump_version(&stable_version, bump);
             }
             None => {
-                // No commits to collect, just start at 1.0.0
-                // TODO: Set version to 1.0.0 and create a version tag using the tag format
+                let new_version = INITIAL_STABLE_VERSION.clone();
             }
         }
     }
