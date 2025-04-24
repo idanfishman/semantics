@@ -91,12 +91,8 @@ impl ReleaseChannel {
             ),
             false => String::new(),
         };
-        let build_metadata_regex = "(?:\\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?";
 
-        let tag_regex = format!(
-            "^{}{}{}{}$",
-            tag_prefix, base_regex, prerelease_regex, build_metadata_regex
-        );
+        let tag_regex = format!("^{}{}{}$", tag_prefix, base_regex, prerelease_regex);
 
         Ok(Regex::new(&tag_regex)?)
     }
