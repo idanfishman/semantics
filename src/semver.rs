@@ -47,7 +47,6 @@ pub fn initial_prerelease_version(label: &str) -> Version {
 /// # Returns
 ///
 /// * A new `Version` instance with the incremented version number.
-///
 pub fn bump_version(version: &Version, bump: VersionBump) -> Version {
     match bump {
         VersionBump::Patch => Version::new(version.major, version.minor, version.patch + 1),
@@ -67,7 +66,6 @@ pub fn bump_version(version: &Version, bump: VersionBump) -> Version {
 /// # Returns
 ///
 /// * A new `Version` instance with the prerelease identifier.
-///
 fn create_prerelease_version(base_version: &Version, label: &str, tail: u8) -> Version {
     let mut new_version = base_version.clone();
     new_version.pre = format_prerelease(label, tail);
@@ -84,7 +82,6 @@ fn create_prerelease_version(base_version: &Version, label: &str, tail: u8) -> V
 /// # Returns
 ///
 /// * A `Prerelease` instance representing the prerelease identifier.
-///
 fn format_prerelease(head: &str, tail: u8) -> Prerelease {
     Prerelease::from_str(&format!("{}.{}", head, tail)).unwrap()
 }
@@ -102,7 +99,6 @@ fn format_prerelease(head: &str, tail: u8) -> Prerelease {
 /// # Panics
 ///
 /// * Panics if the prerelease format is not numeric.
-///
 fn inc_prerelease_tail(version: &Version) -> u8 {
     version
         .pre
@@ -136,7 +132,6 @@ fn inc_prerelease_tail(version: &Version) -> u8 {
 ///
 /// * Panics if both `stable_version` and `prerelease_version` are `None`.
 /// * Panics if the prerelease tail is not numeric.
-///
 pub fn next_preprelease_version(
     stable_version: Option<&Version>,
     prerelease_version: Option<&Version>,

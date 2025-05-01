@@ -32,15 +32,6 @@ impl Analyzer {
     /// # Errors
     ///
     /// Returns an error if neither preset nor rules are provided.
-    ///
-    /// # Examples
-    /// ```rust
-    /// use crate::commit_analyzer::analyzer::Analyzer;
-    /// use crate::commit_analyzer::preset::Preset;
-    ///
-    /// let analyzer = Analyzer::new(Some(Preset::ConventionalCommits), None).unwrap();
-    /// assert_eq!(analyzer.rules.len(), 4); // 4 rules in Conventional Commits
-    /// ```
     pub fn new(preset: Option<Preset>, rules: Option<Vec<Rule>>) -> Result<Analyzer> {
         let mut all_rules = match (preset, rules) {
             // If both preset and rules are provided, merge them
@@ -75,20 +66,6 @@ impl Analyzer {
     /// # Returns
     ///
     /// A `Result` containing the `Analyzer` instance or an error message.
-    ///
-    /// # Examples
-    /// ```rust
-    /// use crate::commit_analyzer::analyzer::Analyzer;
-    /// use crate::commit_analyzer::config::CommitAnalyzerConfig;
-    /// use crate::commit_analyzer::preset::Preset;
-    ///
-    /// let config = CommitAnalyzerConfig {
-    ///     preset: Some(Preset::ConventionalCommits),
-    ///     rules: None,
-    /// };
-    /// let analyzer = Analyzer::from_config(&config).unwrap();
-    /// assert_eq!(analyzer.rules.len(), 4);
-    /// ```
     pub fn from_config(config: &CommitAnalyzerConfig) -> Result<Self> {
         Self::new(
             config.preset.as_ref().cloned(),
@@ -105,15 +82,6 @@ impl Analyzer {
     /// # Returns
     ///
     /// A reference to the static rules for the given preset.
-    ///
-    /// # Examples
-    /// ```rust
-    /// use crate::commit_analyzer::analyzer::Analyzer;
-    /// use crate::commit_analyzer::preset::Preset;
-    ///
-    /// let rules = Analyzer::get_preset_rules(Preset::ConventionalCommits);
-    /// assert_eq!(rules.len(), 4);
-    /// ```
     fn get_preset_rules(preset: Preset) -> &'static Vec<Rule> {
         match preset {
             Preset::ConventionalCommits => &CONVENTIONAL_COMMITS_RULES,
@@ -129,19 +97,6 @@ impl Analyzer {
     /// # Returns
     ///
     /// The version bump type based on the commit message, or `None` if no rules match.
-    ///
-    /// # Examples
-    /// ```rust
-    /// use crate::commit_analyzer::analyzer::Analyzer;
-    /// use crate::commit_analyzer::preset::Preset;
-    /// use crate::test_helpers::{create_test_commit, create_test_repo};
-    ///
-    /// let (repo, _temp_dir) = create_test_repo();
-    /// let analyzer = Analyzer::new(Some(Preset::ConventionalCommits), None).unwrap();
-    /// let commit = create_test_commit(&repo, "master", "fix: a fix commit");
-    /// let result = analyzer.analyze_commit(&commit);
-    /// assert_eq!(result, Some(VersionBump::Patch));
-    /// ```
     fn analyze_commit(&self, commit: &Commit) -> Option<VersionBump> {
         self.rules.iter().find_map(|rule| rule.eval(commit))
     }
@@ -155,21 +110,6 @@ impl Analyzer {
     /// # Returns
     ///
     /// The maximum version bump type based on the commit messages, or `None` if no rules match.
-    ///
-    /// # Examples
-    /// ```rust
-    /// use crate::commit_analyzer::analyzer::Analyzer;
-    /// use crate::commit_analyzer::preset::Preset;
-    /// use crate::test_helpers::{create_test_commit, create_test_repo};
-    ///
-    /// let (repo, _temp_dir) = create_test_repo();
-    /// let analyzer = Analyzer::new(Some(Preset::ConventionalCommits), None).unwrap();
-    /// let commit1 = create_test_commit(&repo, "master", "fix: a fix commit");
-    /// let commit2 = create_test_commit(&repo, "master", "feat: a new feature");
-    /// let commits = vec![commit1, commit2];
-    /// let result = analyzer.analyze_commits(&commits);
-    /// assert_eq!(result, Some(VersionBump::Minor));
-    /// ```
     pub fn analyze_commits(&self, commits: &[Commit]) -> Option<VersionBump> {
         let mut max_bump = None;
 

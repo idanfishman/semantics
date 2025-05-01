@@ -127,9 +127,7 @@ impl ReleaseChannel {
 ///
 /// # Returns
 /// The stable release channel, or an error if not found.
-pub fn find_stable_release_channel<'a>(
-    channels: &'a [ReleaseChannel],
-) -> Result<&'a ReleaseChannel> {
+pub fn find_stable_release_channel(channels: &[ReleaseChannel]) -> Result<&ReleaseChannel> {
     channels
         .iter()
         .find(|channel| !channel.prerelease)

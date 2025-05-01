@@ -74,22 +74,6 @@ fn resolve_head_oid(repo: &Repository) -> Result<Oid> {
 /// - The repository is in a detached HEAD state.
 /// - The branch name cannot be determined (e.g., the branch is unnamed).
 /// - The HEAD reference cannot be retrieved (e.g., the repository is in an invalid state).
-///
-/// # Examples
-///
-/// ```rust
-/// use git2::Repository;
-/// use crate::git::detect_current_branch;
-///
-/// // Open a Git repository
-/// let repo = Repository::open(".").unwrap();
-///
-/// // Detect the current branch
-/// match detect_current_branch(&repo) {
-///     Ok(branch_name) => println!("Current branch: {}", branch_name),
-///     Err(err) => eprintln!("Error: {}", err),
-/// }
-/// ```
 pub fn detect_current_branch(repo: &Repository) -> Result<String> {
     let head = repo.head().context("could not get HEAD reference")?;
 

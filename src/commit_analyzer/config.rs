@@ -10,25 +10,6 @@ use crate::commit_analyzer::rule::Rule;
 ///
 /// # Default
 /// By default, the configuration uses the `ConventionalCommits` preset and no custom rules.
-///
-/// # Examples
-/// ```rust
-/// use crate::commit_analyzer::config::CommitAnalyzerConfig;
-/// use crate::commit_analyzer::preset::Preset;
-///
-/// // Default configuration
-/// let default_config = CommitAnalyzerConfig::default();
-/// assert_eq!(default_config.preset, Some(Preset::ConventionalCommits));
-/// assert!(default_config.rules.is_none());
-///
-/// // Custom configuration
-/// let custom_config = CommitAnalyzerConfig {
-///     preset: None,
-///     rules: Some(vec![]),
-/// };
-/// assert!(custom_config.preset.is_none());
-/// assert!(custom_config.rules.is_some());
-/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommitAnalyzerConfig {
     #[serde(skip_serializing_if = "Option::is_none")]

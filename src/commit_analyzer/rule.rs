@@ -41,19 +41,6 @@ impl Rule {
     /// # Errors
     ///
     /// Returns an error if the pattern is invalid or cannot be compiled into regex.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use crate::commit_analyzer::Rule;
-    /// use crate::utils::VersionBump;
-    ///
-    /// let rule = Rule::new(
-    ///    VersionBump::Patch,
-    ///   r"^fix(?:\(([^)]+)\))?:\s.+$",
-    ///   Some(CommitSection::Title),
-    /// ).unwrap();
-    /// ```
     pub fn new(
         version_bump: VersionBump,
         pattern: &str,
