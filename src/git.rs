@@ -11,9 +11,7 @@ use git2::{Commit, Oid, Repository};
 ///
 /// # Returns
 ///
-/// Returns a `Result`:
-/// - `Ok(Vec<Commit<'repo>>)` containing a vector of commits from HEAD to the specified tag.
-/// - `Err(anyhow::Error)` if the commits cannot be collected.
+/// vector of commits from HEAD to the specified tag.
 pub fn collect_commits_from_head_to_tag<'repo>(
     repo: &'repo Repository,
     tag: &str,
@@ -68,9 +66,7 @@ fn resolve_head_oid(repo: &Repository) -> Result<Oid> {
 ///
 /// # Returns
 ///
-/// Returns a `Result`:
-/// - `Ok(String)` containing the name of the current branch.
-/// - `Err(anyhow::Error)` if the branch cannot be determined.
+/// The name of the current branch.
 ///
 /// # Errors
 ///

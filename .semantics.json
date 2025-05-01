@@ -1,0 +1,18 @@
+{
+  "commit_analyzer_config": {
+    "preset": "conventional-commits"
+  },
+  "release_channels": [
+    {
+      "name": "stable",
+      "branch": "main",
+      "prerelease": false
+    },
+    {
+      "name": "rc",
+      "branch": "main",
+      "prerelease": true
+    }
+  ],
+  "tag_format": "v{version}"
+}

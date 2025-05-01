@@ -1,7 +1,8 @@
+use std::str::FromStr;
+
 use once_cell::sync::Lazy;
 use semver::{Prerelease, Version};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum VersionBump {
@@ -188,7 +189,7 @@ pub fn next_preprelease_version(
 mod tests {
     use semver::Version;
 
-    use crate::utils::{
+    use crate::semver::{
         VersionBump, bump_version, create_prerelease_version, format_prerelease,
         inc_prerelease_tail, initial_prerelease_version, next_preprelease_version,
     };

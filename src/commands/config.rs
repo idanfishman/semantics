@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use anyhow::{Ok, Result};
-use serde_json::to_writer_pretty;
 
 use crate::config::Config;
 
@@ -23,7 +22,7 @@ pub fn init(path: &Path, force: bool) -> Result<()> {
 
 pub fn show(path: &Path) -> Result<()> {
     let cfg = Config::from_file(path)?;
-    to_writer_pretty(std::io::stdout(), &cfg)?;
+    serde_json::to_writer_pretty(std::io::stdout(), &cfg)?;
 
     Ok(())
 }

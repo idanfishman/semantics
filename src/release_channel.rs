@@ -5,39 +5,36 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+use crate::git::detect_current_branch;
+
+/// Represents a release channel in semantics.
+///
+/// A release channel defines a specific branch and its associated settings for versioning and releases.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Validate)]
 pub struct ReleaseChannel {
+    /// The name of the release channel.
     #[validate(length(min = 1, message = "release channel name cannot be empty"))]
     pub name: String,
+
+    /// The branch associated with the release channel.
     #[validate(length(min = 1, message = "release channel must be associated with a branch"))]
     pub branch: String,
+
+    /// Indicates if the release channel is a prerelease.
     #[serde(default)]
     pub prerelease: bool,
 }
 
 impl ReleaseChannel {
-    /// Creates a new instance of ReleaseChannel.
+    /// Creates a new instance of `ReleaseChannel`.
     ///
     /// # Arguments
-    ///
     /// * `name` - The name of the release channel.
     /// * `branch` - The branch associated with the release channel.
-    /// * `prerelease` - A boolean indicating if the release channel is a prerelease.
+    /// * `prerelease` - Whether the release channel is a prerelease.
     ///
     /// # Errors
-    ///
-    /// Returns an error if the name is empty or if the branch is empty.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use crate::release_channel::ReleaseChannel;
-    ///
-    /// /// let channel = ReleaseChannel::new("stable", "main", false).unwrap();
-    /// assert_eq!(channel.name, "stable");
-    /// assert_eq!(channel.branch, "main");
-    /// assert_eq!(channel.prerelease, false);
-    /// ```
+    /// Returns an error if the `name` or `branch` is empty.
     pub fn new(name: &str, branch: &str, prerelease: bool) -> Result<Self> {
         let channel = ReleaseChannel {
             name: name.to_string(),
@@ -51,17 +48,13 @@ impl ReleaseChannel {
     }
 
     /// Gets the latest version from the Git repository based on the provided tag format.
-    ///     
-    /// # Arguments
     ///
+    /// # Arguments
     /// * `repo` - The Git repository to search for tags.
-    /// * `tag_format` - The format of the tag (e.g., "v{version}").
+    /// * `tag_format` - The format of the tags to search for.
     ///
     /// # Returns
-    ///
-    /// Returns a `Result` containing the latest version and its corresponding tag if successful,
-    /// or an error message.
-    ///
+    /// The latest version and its associated tag, or `None` if no versions are found.
     pub fn latest_version(
         &self,
         repo: &Repository,
@@ -72,16 +65,12 @@ impl ReleaseChannel {
     }
 
     /// Creates a regex pattern to match tags based on the provided tag format and release channel name.
-    /// follows the original regex pattern from https://regex101.com/r/Ly7O1x/3/
     ///
     /// # Arguments
-    ///
-    /// * `tag_format` - The format of the tag (e.g., "v{version}").
+    /// * `tag_prefix` - The prefix of the tag format (e.g., "v").
     ///
     /// # Returns
-    ///
-    /// Returns a `Result` containing a regex pattern if successful, or an error message.
-    ///
+    /// A regex pattern to match tags for the release channel.
     fn tag_regex(&self, tag_prefix: &str) -> Result<Regex> {
         let base_regex = "(?P<major>0|[1-9]\\d*)\\.(?P<minor>0|[1-9]\\d*)\\.(?P<patch>0|[1-9]\\d*)";
         let prerelease_regex = match self.prerelease {
@@ -100,14 +89,11 @@ impl ReleaseChannel {
     /// Gets a list of versions from the Git repository based on the provided tag format.
     ///
     /// # Arguments
-    ///
     /// * `repo` - The Git repository to search for tags.
-    /// * `tag_format` - The format of the tag (e.g., "v{version}").
+    /// * `tag_format` - The format of the tags to search for.
     ///
     /// # Returns
-    ///
-    /// Returns a `Result` containing a vector of parsed versions and their corresponding tags if successful,
-    ///
+    /// A list of versions and their associated tags, sorted in descending order.
     fn versions(&self, repo: &Repository, tag_format: &str) -> Result<Vec<(String, Version)>> {
         let tag_prefix = tag_format.replace("{version}", "");
         let tag_regex = self.tag_regex(&tag_prefix)?;
@@ -134,35 +120,53 @@ impl ReleaseChannel {
     }
 }
 
+/// Finds the stable release channel in a list of channels.
+///
+/// # Arguments
+/// * `channels` - The list of release channels to search in.
+///
+/// # Returns
+/// The stable release channel, or an error if not found.
+pub fn find_stable_release_channel<'a>(
+    channels: &'a [ReleaseChannel],
+) -> Result<&'a ReleaseChannel> {
+    channels
+        .iter()
+        .find(|channel| !channel.prerelease)
+        .with_context(|| "no stable release channel found")
+}
+
+/// Resolves the target release channel based on a specified channel name or the current branch.
+///
+/// # Arguments
+/// * `repo` - The Git repository to detect the current branch.
+/// * `channels` - The list of release channels to search in.
+/// * `channel_name` - An optional name of the release channel to search for.
+///
+/// # Returns
+/// The release channel matching the name or branch, or an error if not found.
+pub fn resolve_target_channel<'a>(
+    repo: &Repository,
+    channels: &'a [ReleaseChannel],
+    channel_name: Option<&str>,
+) -> Result<&'a ReleaseChannel> {
+    if let Some(name) = channel_name {
+        find_release_channel_by_name(name, channels)
+    } else {
+        let branch_name = detect_current_branch(repo)?;
+        find_release_channel_by_branch(&branch_name, channels)
+    }
+}
+
 /// Finds a release channel in a list of channels based on the branch name.
 ///
 /// # Arguments
-///
 /// * `branch_name` - The name of the branch to search for.
-/// * `channels` - A slice of `ReleaseChannel` instances.
+/// * `channels` - The list of release channels to search in.
 ///
 /// # Returns
-///
-/// Returns a `Result` containing a reference to the release channel if found, or an error message.
-///
-/// # Examples
-///
-/// ```rust
-/// use crate::release_channel::{ReleaseChannel, find_release_channel_by_branch};
-///
-/// let channels = vec![
-///   ReleaseChannel::new("stable", "main", false).unwrap(),
-///   ReleaseChannel::new("beta", "develop", true).unwrap(),
-/// ];
-///
-/// let channel = find_release_channel_by_branch("main", &channels).unwrap();
-/// assert_eq!(channel.name, "stable");
-///
-/// let channel = find_release_channel_by_branch("develop", &channels).unwrap();
-/// assert_eq!(channel.name, "beta");
-/// ```
-///
-pub fn find_release_channel_by_branch<'a>(
+/// The release channel associated with the branch, or an error if not found.
+fn find_release_channel_by_branch<'a>(
     branch_name: &str,
     channels: &'a [ReleaseChannel],
 ) -> Result<&'a ReleaseChannel> {
@@ -175,32 +179,12 @@ pub fn find_release_channel_by_branch<'a>(
 /// Finds a release channel in a list of channels based on the channel name.
 ///
 /// # Arguments
-///
 /// * `channel_name` - The name of the release channel to search for.
-/// * `channels` - A slice of `ReleaseChannel` instances.
+/// * `channels` - The list of release channels to search in.
 ///
 /// # Returns
-///
-/// Returns a `Result` containing a reference to the release channel if found, or an error message.
-///
-/// # Examples
-///
-/// ```rust
-/// use crate::release_channel::{ReleaseChannel, find_release_channel_by_name};
-///
-/// let channels = vec![
-///   ReleaseChannel::new("stable", "main", false).unwrap(),
-///   ReleaseChannel::new("beta", "develop", true).unwrap(),
-/// ];
-///
-/// let channel = find_release_channel_by_name("stable", &channels).unwrap();
-/// assert_eq!(channel.name, "stable");
-///
-/// let channel = find_release_channel_by_name("beta", &channels).unwrap();
-/// assert_eq!(channel.name, "beta");
-/// ```
-///
-pub fn find_release_channel_by_name<'a>(
+/// The release channel with the specified name, or an error if not found.
+fn find_release_channel_by_name<'a>(
     channel_name: &str,
     channels: &'a [ReleaseChannel],
 ) -> Result<&'a ReleaseChannel> {
@@ -210,49 +194,13 @@ pub fn find_release_channel_by_name<'a>(
         .with_context(|| format!("no release channel found with name: {}", channel_name))
 }
 
-/// Finds the stable release channel in a list of channels.
-///
-/// # Arguments
-///
-/// * `channels` - A slice of `ReleaseChannel` instances.
-///
-/// # Returns
-///
-/// Returns a `Result` containing a reference to the stable release channel if found, or an error message.
-///
-/// # Examples
-///
-/// ```rust
-/// use crate::release_channel::{ReleaseChannel, find_stable_release_channel};
-///     
-/// let channels = vec![
-///   ReleaseChannel::new("stable", "main", false).unwrap(),
-///   ReleaseChannel::new("beta", "develop", true).unwrap(),
-/// ];
-///
-/// let channel = find_stable_release_channel(&channels).unwrap();
-/// assert_eq!(channel.name, "stable");
-/// assert_eq!(channel.branch, "main");
-/// assert_eq!(channel.prerelease, false);
-/// /// ```
-///
-///
-pub fn find_stable_release_channel<'a>(
-    channels: &'a [ReleaseChannel],
-) -> Result<&'a ReleaseChannel> {
-    channels
-        .iter()
-        .find(|channel| !channel.prerelease)
-        .with_context(|| "no stable release channel found")
-}
-
 #[cfg(test)]
 mod tests {
     use semver::Version;
 
     use crate::release_channel::{
         ReleaseChannel, find_release_channel_by_branch, find_release_channel_by_name,
-        find_stable_release_channel,
+        find_stable_release_channel, resolve_target_channel,
     };
     use crate::test_helpers::create_versioned_test_repo;
 
@@ -472,5 +420,28 @@ mod tests {
             result.unwrap_err().to_string(),
             "no stable release channel found"
         );
+    }
+
+    #[test]
+    fn test_resolve_target_channel() {
+        let (repo, _dir) = create_versioned_test_repo(&vec![
+            ("v1.0.0", "first release"),
+            ("v1.1.0", "minor release"),
+            ("v2.0.0", "major release"),
+        ]);
+        let channels = vec![
+            ReleaseChannel::new("stable", "master", false).unwrap(),
+            ReleaseChannel::new("beta", "develop", true).unwrap(),
+        ];
+
+        let channel = resolve_target_channel(&repo, &channels, Some("beta")).unwrap();
+        assert_eq!(channel.name, "beta");
+        assert_eq!(channel.branch, "develop");
+        assert_eq!(channel.prerelease, true);
+
+        let channel = resolve_target_channel(&repo, &channels, None).unwrap();
+        assert_eq!(channel.name, "stable");
+        assert_eq!(channel.branch, "master");
+        assert_eq!(channel.prerelease, false);
     }
 }

@@ -8,14 +8,21 @@ use validator::{Validate, ValidationError};
 use crate::commit_analyzer::config::CommitAnalyzerConfig;
 use crate::release_channel::ReleaseChannel;
 
-#[derive(Debug, Validate, Clone, Serialize, Deserialize)]
+/// Represents the configuration for the semantics tool.
+///
+/// This struct defines the overall configuration for the tool, including settings for
+/// commit analysis, release channels, and tag formatting.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Validate)]
 pub struct Config {
-    pub commit_analyzer: CommitAnalyzerConfig,
+    /// Configuration for analyzing commit messages.
+    pub commit_analyzer_config: CommitAnalyzerConfig,
 
+    /// A list of release channels with their respective settings.
     #[validate(custom(function = "validate_release_channels"))]
     #[validate(nested)]
     pub release_channels: Vec<ReleaseChannel>,
 
+    /// The format for version tags.
     #[validate(custom(function = "validate_tag_format"))]
     pub tag_format: String,
 }
@@ -24,11 +31,9 @@ impl Config {
     /// Writes the config to a file.
     ///
     /// # Arguments
-    ///
     /// * `path` - The path to the file where the config should be saved.
     ///
     /// # Errors
-    ///
     /// Returns an error if the file cannot be written or if the config is invalid.
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let content = serde_json::to_string_pretty(self)
@@ -44,11 +49,9 @@ impl Config {
     /// Reads the config from a file.
     ///
     /// # Arguments
-    ///
     /// * `path` - The path to the file from which the config should be read.
     ///
     /// # Errors
-    ///
     /// Returns an error if the file cannot be read or if the config is invalid.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let content = fs::read_to_string(path.as_ref())
@@ -64,11 +67,17 @@ impl Config {
 }
 
 impl Default for Config {
+    /// Provides a default configuration for the semantics tool.
+    ///
+    /// The default configuration includes:
+    /// * A tag format of `v{version}`.
+    /// * Default commit analyzer settings.
+    /// * Two release channels: `stable` (non-prerelease) and `rc` (prerelease).
     fn default() -> Self {
         Config {
             tag_format: String::from("v{version}"),
 
-            commit_analyzer: CommitAnalyzerConfig::default(),
+            commit_analyzer_config: CommitAnalyzerConfig::default(),
 
             release_channels: vec![
                 ReleaseChannel::new("stable", "main", false).unwrap(),
@@ -79,6 +88,14 @@ impl Default for Config {
 }
 
 /// Ensure that tag format ends with the `{version}` placeholder.
+///
+/// # Arguments
+///
+/// * `tag_format` - The tag format string to validate.
+///
+/// # Errors
+///
+/// Returns a `ValidationError` if the tag format does not end with `{version}`.
 fn validate_tag_format(tag_format: &str) -> Result<(), ValidationError> {
     if !tag_format.ends_with("{version}") {
         let mut error = ValidationError::new("tag_format");
@@ -93,6 +110,14 @@ fn validate_tag_format(tag_format: &str) -> Result<(), ValidationError> {
 /// 2. No duplicate release channel names.
 /// 3. At least one release channel must be marked as not a prerelease.
 /// 4. Only one release channel can be marked as not a prerelease.
+///
+/// # Arguments
+///
+/// * `release_channels` - A reference to the list of release channels to validate.
+///
+/// # Errors
+///
+/// Returns a `ValidationError` if any of the rules are violated.
 fn validate_release_channels(
     release_channels: &Vec<ReleaseChannel>,
 ) -> Result<(), ValidationError> {

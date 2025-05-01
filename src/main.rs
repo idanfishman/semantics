@@ -3,13 +3,14 @@ use clap::Parser;
 
 use cli::{Cli, Command, ConfigCommand};
 
+mod changelog_generator;
 mod cli;
 mod commands;
 mod commit_analyzer;
 mod config;
 mod git;
 mod release_channel;
-mod utils;
+mod semver;
 
 #[cfg(test)]
 mod test_helpers;
@@ -17,21 +18,39 @@ mod test_helpers;
 fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let config_path = args.config;
-
-    match args.cmd {
+    match args.command {
         Command::Analyze {
+            channel,
+            config,
             repo,
-            release_channel,
-        } => {
-            commands::analyze::analyze(&config_path, &repo, release_channel.as_deref())?;
-        }
-        Command::Config(ConfigCommand::Init { force }) => {
-            commands::config::init(&config_path, force)?;
-        }
-        Command::Config(ConfigCommand::Show) => {
-            commands::config::show(&config_path)?;
-        }
+        } => {}
+        Command::Bump {
+            channel,
+            dry_run,
+            config,
+            repo,
+            subcommand,
+        } => {}
+        Command::Changelog {
+            channel,
+            dry_run,
+            config,
+            repo,
+        } => {}
+        Command::Release {
+            channel,
+            dry_run,
+            config,
+            repo,
+        } => {}
+        Command::Config { subcommand } => match subcommand {
+            ConfigCommand::Init { output, force } => {
+                commands::config::init(&output, force)?;
+            }
+            ConfigCommand::Show { config } => {
+                commands::config::show(&config)?;
+            }
+        },
     }
 
     Ok(())

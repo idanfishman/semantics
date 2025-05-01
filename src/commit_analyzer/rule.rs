@@ -3,10 +3,10 @@ use git2::Commit;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::VersionBump;
+use crate::semver::VersionBump;
 
 /// Specifies the section of a commit message.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CommitSection {
     /// The commit message title.
     #[serde(rename = "title")]
@@ -102,6 +102,16 @@ impl Rule {
     }
 }
 
+impl PartialEq for Rule {
+    fn eq(&self, other: &Self) -> bool {
+        self.pattern_str == other.pattern_str
+            && self.version_bump == other.version_bump
+            && self.scope == other.scope
+    }
+}
+
+impl Eq for Rule {}
+
 impl Serialize for Rule {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
@@ -153,8 +163,8 @@ mod tests {
     use serde_json;
 
     use crate::commit_analyzer::rule::{CommitSection, Rule};
+    use crate::semver::VersionBump;
     use crate::test_helpers::{create_test_commit, create_test_repo};
-    use crate::utils::VersionBump;
 
     #[test]
     fn test_rule_creation_valid() {
