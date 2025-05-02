@@ -11,7 +11,7 @@ use crate::git::detect_current_branch;
 ///
 /// A release channel defines a specific branch and its associated settings for versioning and releases.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Validate)]
-pub struct ReleaseChannel {
+pub struct Channel {
     /// The name of the release channel.
     #[validate(length(min = 1, message = "release channel name cannot be empty"))]
     pub name: String,
@@ -25,8 +25,8 @@ pub struct ReleaseChannel {
     pub prerelease: bool,
 }
 
-impl ReleaseChannel {
-    /// Creates a new instance of `ReleaseChannel`.
+impl Channel {
+    /// Creates a new instance of `Channel`.
     ///
     /// # Arguments
     /// * `name` - The name of the release channel.
@@ -36,7 +36,7 @@ impl ReleaseChannel {
     /// # Errors
     /// Returns an error if the `name` or `branch` is empty.
     pub fn new(name: &str, branch: &str, prerelease: bool) -> Result<Self> {
-        let channel = ReleaseChannel {
+        let channel = Channel {
             name: name.to_string(),
             branch: branch.to_string(),
             prerelease,
@@ -127,7 +127,7 @@ impl ReleaseChannel {
 ///
 /// # Returns
 /// The stable release channel, or an error if not found.
-pub fn find_stable_release_channel(channels: &[ReleaseChannel]) -> Result<&ReleaseChannel> {
+pub fn find_stable_release_channel(channels: &[Channel]) -> Result<&Channel> {
     channels
         .iter()
         .find(|channel| !channel.prerelease)
@@ -145,9 +145,9 @@ pub fn find_stable_release_channel(channels: &[ReleaseChannel]) -> Result<&Relea
 /// The release channel matching the name or branch, or an error if not found.
 pub fn resolve_target_channel<'a>(
     repo: &Repository,
-    channels: &'a [ReleaseChannel],
+    channels: &'a [Channel],
     channel_name: Option<&str>,
-) -> Result<&'a ReleaseChannel> {
+) -> Result<&'a Channel> {
     if let Some(name) = channel_name {
         find_release_channel_by_name(name, channels)
     } else {
@@ -166,8 +166,8 @@ pub fn resolve_target_channel<'a>(
 /// The release channel associated with the branch, or an error if not found.
 fn find_release_channel_by_branch<'a>(
     branch_name: &str,
-    channels: &'a [ReleaseChannel],
-) -> Result<&'a ReleaseChannel> {
+    channels: &'a [Channel],
+) -> Result<&'a Channel> {
     channels
         .iter()
         .find(|channel| channel.branch == branch_name)
@@ -184,8 +184,8 @@ fn find_release_channel_by_branch<'a>(
 /// The release channel with the specified name, or an error if not found.
 fn find_release_channel_by_name<'a>(
     channel_name: &str,
-    channels: &'a [ReleaseChannel],
-) -> Result<&'a ReleaseChannel> {
+    channels: &'a [Channel],
+) -> Result<&'a Channel> {
     channels
         .iter()
         .find(|channel| channel.name == channel_name)
@@ -197,14 +197,14 @@ mod tests {
     use semver::Version;
 
     use crate::release_channel::{
-        ReleaseChannel, find_release_channel_by_branch, find_release_channel_by_name,
+        Channel, find_release_channel_by_branch, find_release_channel_by_name,
         find_stable_release_channel, resolve_target_channel,
     };
     use crate::test_helpers::create_versioned_test_repo;
 
     #[test]
     fn test_release_channel_new() {
-        let channel = ReleaseChannel::new("stable", "main", false).unwrap();
+        let channel = Channel::new("stable", "main", false).unwrap();
         assert_eq!(channel.name, "stable");
         assert_eq!(channel.branch, "main");
         assert_eq!(channel.prerelease, false);
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_release_channel_new_empty_name() {
-        let result = ReleaseChannel::new("", "main", false);
+        let result = Channel::new("", "main", false);
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_release_channel_new_empty_branch() {
-        let result = ReleaseChannel::new("stable", "", false);
+        let result = Channel::new("stable", "", false);
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_tag_regex_prerelease_false() {
-        let channel = ReleaseChannel::new("stable", "main", false).unwrap();
+        let channel = Channel::new("stable", "main", false).unwrap();
         let regex = channel.tag_regex("v").unwrap();
         // Should match v1.2.3, but not v1.2.3-alpha
         assert!(regex.is_match("v1.2.3"));
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_tag_regex_prerelease_true() {
-        let channel = ReleaseChannel::new("alpha", "main", true).unwrap();
+        let channel = Channel::new("alpha", "main", true).unwrap();
         let regex = channel.tag_regex("v").unwrap();
         // Should match v1.2.3-alpha.1, v1.2.3-alpha.123
         assert!(regex.is_match("v1.2.3-alpha.1"));
@@ -262,7 +262,7 @@ mod tests {
             ("v2.0.0", "major release"),
         ];
         let (repo, _dir) = create_versioned_test_repo(&tags_and_msgs);
-        let channel = ReleaseChannel::new("stable", "master", false).unwrap();
+        let channel = Channel::new("stable", "master", false).unwrap();
         let versions = channel.versions(&repo, "v{version}").unwrap();
         assert_eq!(versions.len(), 3);
         assert_eq!(versions[0].1, Version::parse("2.0.0").unwrap());
@@ -281,8 +281,8 @@ mod tests {
             ("v1.0.0-beta.1", "beta prerelease"),
         ];
         let (repo, _dir) = create_versioned_test_repo(&tags_and_msgs);
-        let alpha_channel = ReleaseChannel::new("alpha", "master", true).unwrap();
-        let beta_channel = ReleaseChannel::new("beta", "master", true).unwrap();
+        let alpha_channel = Channel::new("alpha", "master", true).unwrap();
+        let beta_channel = Channel::new("beta", "master", true).unwrap();
         let alpha_versions = alpha_channel.versions(&repo, "v{version}").unwrap();
         assert_eq!(alpha_versions.len(), 2);
         assert_eq!(
@@ -303,8 +303,8 @@ mod tests {
     #[test]
     fn test_find_release_channel_by_branch() {
         let channels = vec![
-            ReleaseChannel::new("stable", "main", false).unwrap(),
-            ReleaseChannel::new("beta", "develop", true).unwrap(),
+            Channel::new("stable", "main", false).unwrap(),
+            Channel::new("beta", "develop", true).unwrap(),
         ];
 
         let channel = find_release_channel_by_branch("main", &channels).unwrap();
@@ -321,8 +321,8 @@ mod tests {
     #[test]
     fn test_find_release_channel_by_branch_not_found() {
         let channels = vec![
-            ReleaseChannel::new("stable", "main", false).unwrap(),
-            ReleaseChannel::new("beta", "develop", true).unwrap(),
+            Channel::new("stable", "main", false).unwrap(),
+            Channel::new("beta", "develop", true).unwrap(),
         ];
 
         let index = find_release_channel_by_branch("feature", &channels);
@@ -336,8 +336,8 @@ mod tests {
     #[test]
     fn test_find_release_channel_by_branch_multiple() {
         let channels = vec![
-            ReleaseChannel::new("stable", "main", false).unwrap(),
-            ReleaseChannel::new("rc", "main", true).unwrap(),
+            Channel::new("stable", "main", false).unwrap(),
+            Channel::new("rc", "main", true).unwrap(),
         ];
 
         let channel = find_release_channel_by_branch("main", &channels).unwrap();
@@ -349,8 +349,8 @@ mod tests {
     #[test]
     fn test_find_release_channel_by_name() {
         let channels = vec![
-            ReleaseChannel::new("stable", "main", false).unwrap(),
-            ReleaseChannel::new("beta", "develop", true).unwrap(),
+            Channel::new("stable", "main", false).unwrap(),
+            Channel::new("beta", "develop", true).unwrap(),
         ];
 
         let channel = find_release_channel_by_name("stable", &channels).unwrap();
@@ -367,8 +367,8 @@ mod tests {
     #[test]
     fn test_find_release_channel_by_name_not_found() {
         let channels = vec![
-            ReleaseChannel::new("stable", "main", false).unwrap(),
-            ReleaseChannel::new("beta", "develop", true).unwrap(),
+            Channel::new("stable", "main", false).unwrap(),
+            Channel::new("beta", "develop", true).unwrap(),
         ];
 
         let result = find_release_channel_by_name("alpha", &channels);
@@ -382,8 +382,8 @@ mod tests {
     #[test]
     fn test_find_release_channel_by_name_multiple() {
         let channels = vec![
-            ReleaseChannel::new("stable", "main", false).unwrap(),
-            ReleaseChannel::new("stable", "develop", true).unwrap(),
+            Channel::new("stable", "main", false).unwrap(),
+            Channel::new("stable", "develop", true).unwrap(),
         ];
 
         let channel = find_release_channel_by_name("stable", &channels).unwrap();
@@ -395,8 +395,8 @@ mod tests {
     #[test]
     fn test_find_stable_release_channel() {
         let channels = vec![
-            ReleaseChannel::new("stable", "main", false).unwrap(),
-            ReleaseChannel::new("beta", "develop", true).unwrap(),
+            Channel::new("stable", "main", false).unwrap(),
+            Channel::new("beta", "develop", true).unwrap(),
         ];
 
         let channel = find_stable_release_channel(&channels).unwrap();
@@ -408,8 +408,8 @@ mod tests {
     #[test]
     fn test_find_stable_release_channel_not_found() {
         let channels = vec![
-            ReleaseChannel::new("beta", "develop", true).unwrap(),
-            ReleaseChannel::new("alpha", "feature", true).unwrap(),
+            Channel::new("beta", "develop", true).unwrap(),
+            Channel::new("alpha", "feature", true).unwrap(),
         ];
 
         let result = find_stable_release_channel(&channels);
@@ -428,8 +428,8 @@ mod tests {
             ("v2.0.0", "major release"),
         ]);
         let channels = vec![
-            ReleaseChannel::new("stable", "master", false).unwrap(),
-            ReleaseChannel::new("beta", "develop", true).unwrap(),
+            Channel::new("stable", "master", false).unwrap(),
+            Channel::new("beta", "develop", true).unwrap(),
         ];
 
         let channel = resolve_target_channel(&repo, &channels, Some("beta")).unwrap();

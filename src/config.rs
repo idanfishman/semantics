@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
 use crate::commit_analyzer::config::CommitAnalyzerConfig;
-use crate::release_channel::ReleaseChannel;
+use crate::release_channel::Channel;
 
 /// Represents the configuration for the semantics tool.
 ///
@@ -20,7 +20,7 @@ pub struct Config {
     /// A list of release channels with their respective settings.
     #[validate(custom(function = "validate_release_channels"))]
     #[validate(nested)]
-    pub release_channels: Vec<ReleaseChannel>,
+    pub release_channels: Vec<Channel>,
 
     /// The format for version tags.
     #[validate(custom(function = "validate_tag_format"))]
@@ -80,8 +80,8 @@ impl Default for Config {
             commit_analyzer_config: CommitAnalyzerConfig::default(),
 
             release_channels: vec![
-                ReleaseChannel::new("stable", "main", false).unwrap(),
-                ReleaseChannel::new("rc", "main", true).unwrap(),
+                Channel::new("stable", "main", false).unwrap(),
+                Channel::new("rc", "main", true).unwrap(),
             ],
         }
     }
@@ -118,9 +118,7 @@ fn validate_tag_format(tag_format: &str) -> Result<(), ValidationError> {
 /// # Errors
 ///
 /// Returns a `ValidationError` if any of the rules are violated.
-fn validate_release_channels(
-    release_channels: &Vec<ReleaseChannel>,
-) -> Result<(), ValidationError> {
+fn validate_release_channels(release_channels: &Vec<Channel>) -> Result<(), ValidationError> {
     if release_channels.is_empty() {
         let mut error = ValidationError::new("release_channels");
         error.message = Some("must contain at least one release channel".into());
@@ -165,7 +163,7 @@ mod tests {
     use validator::Validate;
 
     use crate::config::Config;
-    use crate::release_channel::ReleaseChannel;
+    use crate::release_channel::Channel;
 
     #[test]
     fn test_config_default_is_valid() {
@@ -192,17 +190,17 @@ mod tests {
         assert!(config.validate().is_err());
         // Duplicate names
         config.release_channels = vec![
-            ReleaseChannel::new("stable", "main", false).unwrap(),
-            ReleaseChannel::new("stable", "dev", true).unwrap(),
+            Channel::new("stable", "main", false).unwrap(),
+            Channel::new("stable", "dev", true).unwrap(),
         ];
         assert!(config.validate().is_err());
         // No stable channel
-        config.release_channels = vec![ReleaseChannel::new("rc", "main", true).unwrap()];
+        config.release_channels = vec![Channel::new("rc", "main", true).unwrap()];
         assert!(config.validate().is_err());
         // More than one stable channel
         config.release_channels = vec![
-            ReleaseChannel::new("stable", "main", false).unwrap(),
-            ReleaseChannel::new("prod", "prod", false).unwrap(),
+            Channel::new("stable", "main", false).unwrap(),
+            Channel::new("prod", "prod", false).unwrap(),
         ];
         assert!(config.validate().is_err());
     }
