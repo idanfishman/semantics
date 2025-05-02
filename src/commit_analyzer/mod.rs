@@ -36,7 +36,7 @@ impl Analyzer {
     /// # Errors
     ///
     /// Returns an error if neither preset nor rules are provided.
-    pub fn new(preset: Option<Preset>, rules: Option<Vec<Rule>>) -> Result<Analyzer> {
+    pub fn new(preset: Option<Preset>, rules: Option<Vec<Rule>>) -> Result<Self> {
         let mut all_rules = match (preset, rules) {
             // If both preset and rules are provided, merge them
             (Some(p), Some(r)) => {
