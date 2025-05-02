@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
+use crate::changelog::config::ChangelogGeneratorConfig;
 use crate::commit_analyzer::config::CommitAnalyzerConfig;
 use crate::release_channel::Channel;
 
@@ -16,6 +17,12 @@ use crate::release_channel::Channel;
 pub struct Config {
     /// Configuration for analyzing commit messages.
     pub commit_analyzer_config: CommitAnalyzerConfig,
+
+    /// Configuration for generating changelog.
+    pub changelog_generator_config: ChangelogGeneratorConfig,
+
+    /// Configuration for generating release notes.
+    pub release_notes_generator_config: ChangelogGeneratorConfig,
 
     /// A list of release channels with their respective settings.
     #[validate(custom(function = "validate_release_channels"))]
@@ -72,12 +79,17 @@ impl Default for Config {
     /// The default configuration includes:
     /// * A tag format of `v{version}`.
     /// * Default commit analyzer settings.
+    /// * Default changelog generator settings.
     /// * Two release channels: `stable` (non-prerelease) and `rc` (prerelease).
     fn default() -> Self {
         Config {
             tag_format: String::from("v{version}"),
 
             commit_analyzer_config: CommitAnalyzerConfig::default(),
+
+            changelog_generator_config: ChangelogGeneratorConfig::default(),
+
+            release_notes_generator_config: ChangelogGeneratorConfig::default(),
 
             release_channels: vec![
                 Channel::new("stable", "main", false).unwrap(),

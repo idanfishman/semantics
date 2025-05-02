@@ -1,4 +1,4 @@
-mod changelog_generator;
+mod changelog;
 mod cli;
 mod commands;
 mod commit_analyzer;

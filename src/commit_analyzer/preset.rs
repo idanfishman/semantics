@@ -9,14 +9,8 @@ use crate::semver::VersionBump;
 pub static CONVENTIONAL_COMMITS_RULES: Lazy<Vec<Rule>> = Lazy::new(|| {
     vec![
         Rule::new(
-            VersionBump::Major,
-            r"^BREAKING\sCHANGE:\s.+$",
-            Some(CommitSection::Body),
-        )
-        .unwrap(),
-        Rule::new(
-            VersionBump::Major,
-            r"^\w+!:\s.+$",
+            VersionBump::Patch,
+            r"^fix(?:\(([^)]+)\))?:\s.+$",
             Some(CommitSection::Title),
         )
         .unwrap(),
@@ -27,8 +21,14 @@ pub static CONVENTIONAL_COMMITS_RULES: Lazy<Vec<Rule>> = Lazy::new(|| {
         )
         .unwrap(),
         Rule::new(
-            VersionBump::Patch,
-            r"^fix(?:\(([^)]+)\))?:\s.+$",
+            VersionBump::Major,
+            r"^BREAKING\sCHANGE:\s.+$",
+            Some(CommitSection::Body),
+        )
+        .unwrap(),
+        Rule::new(
+            VersionBump::Major,
+            r"^\w+!:\s.+$",
             Some(CommitSection::Title),
         )
         .unwrap(),
