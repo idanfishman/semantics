@@ -21,26 +21,53 @@ pub fn run(args: Cli) -> Result<()> {
             channel,
             config,
             repo,
-        } => {}
+        } => {
+            commands::analyze::analyze(commands::analyze::AnalyzeArgs {
+                channel,
+                config,
+                repo,
+            })?;
+        }
         Command::Bump {
             channel,
             dry_run,
             config,
             repo,
             subcommand,
-        } => {}
+        } => {
+            commands::bump::bump(commands::bump::BumpArgs {
+                channel,
+                dry_run,
+                config,
+                repo,
+            })?;
+        }
         Command::Changelog {
             channel,
             dry_run,
             config,
             repo,
-        } => {}
+        } => {
+            commands::changelog::changelog(commands::changelog::ChangelogArgs {
+                channel,
+                dry_run,
+                config,
+                repo,
+            })?;
+        }
         Command::Release {
             channel,
             dry_run,
             config,
             repo,
-        } => {}
+        } => {
+            commands::release::release(commands::release::ReleaseArgs {
+                channel,
+                dry_run,
+                config,
+                repo,
+            })?;
+        }
         Command::Config { subcommand } => match subcommand {
             ConfigCommand::Init { output, force } => {
                 commands::config::init(&output, force)?;
